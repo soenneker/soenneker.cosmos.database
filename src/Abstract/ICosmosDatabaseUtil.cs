@@ -10,6 +10,9 @@ namespace Soenneker.Cosmos.Database.Abstract;
 /// </summary>
 public interface ICosmosDatabaseUtil
 {
+    [Pure]
+    ValueTask<Microsoft.Azure.Cosmos.Database> GetDatabase();
+
     /// <summary>
     /// Implements double check locking mechanism
     /// </summary>
@@ -18,6 +21,8 @@ public interface ICosmosDatabaseUtil
 
     [Pure]
     ValueTask<Microsoft.Azure.Cosmos.Database> GetDatabase(string databaseName, CosmosClient cosmosClient);
+
+    ValueTask DeleteDatabase();
 
     ValueTask DeleteDatabase(string databaseName);
 }

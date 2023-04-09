@@ -50,9 +50,14 @@ public class CosmosDatabaseUtil : ICosmosDatabaseUtil
             throw new Exception("Azure:Cosmos:DatabaseName is required");
     }
 
+    public ValueTask<Microsoft.Azure.Cosmos.Database> GetDatabase()
+    {
+        return _databases.Get(_databaseName!, _databaseName!);
+    }
+
     public ValueTask<Microsoft.Azure.Cosmos.Database> GetDatabase(string databaseName)
     {
-        return _databases.Get(databaseName, _databaseName!);
+        return _databases.Get(databaseName, databaseName);
     }
 
     public ValueTask<Microsoft.Azure.Cosmos.Database> GetDatabase(string databaseName, CosmosClient cosmosClient)
@@ -62,6 +67,11 @@ public class CosmosDatabaseUtil : ICosmosDatabaseUtil
         var databaseKey = $"{databaseName}-{hashOfClient}";
 
         return _databases.Get(databaseKey, databaseName);
+    }
+
+    public ValueTask DeleteDatabase()
+    {
+        return DeleteDatabase(_databaseName!);
     }
 
     public async ValueTask DeleteDatabase(string databaseName)
