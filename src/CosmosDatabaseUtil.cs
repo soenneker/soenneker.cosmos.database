@@ -19,6 +19,7 @@ public class CosmosDatabaseUtil : ICosmosDatabaseUtil
 
     private bool _ensureDatabaseOnFirstUse;
     private string? _databaseName;
+    private string? _endpoint;
 
     public CosmosDatabaseUtil(ICosmosClientUtil cosmosClientUtil, ICosmosDatabaseSetupUtil cosmosSetupUtil, IConfiguration config, ILogger<CosmosDatabaseUtil> logger)
     {
@@ -32,10 +33,24 @@ public class CosmosDatabaseUtil : ICosmosDatabaseUtil
 
             var databaseName = (string) args![0];
 
-            if (_ensureDatabaseOnFirstUse)
-                _ = await cosmosSetupUtil.EnsureDatabase(databaseName);
+            Microsoft.Azure.Cosmos.Database database;
 
-            Microsoft.Azure.Cosmos.Database database = client.GetDatabase(databaseName);
+            try
+            {
+                if (_ensureDatabaseOnFirstUse)
+                    _ = await cosmosSetupUtil.EnsureDatabase(databaseName);
+
+                database = client.GetDatabase(databaseName);
+            }
+            catch (Exception e)
+            {
+                var message =
+                    $"*** CosmosClientUtil *** Failed to get database for endpoint {_endpoint}. This probably means we were unable to connect to Cosmos. We'll try to connect again next request.";
+
+                _logger.LogCritical(e, "{message}", message);
+
+                throw new Exception(message);
+            }
 
             return database;
         });
@@ -43,11 +58,13 @@ public class CosmosDatabaseUtil : ICosmosDatabaseUtil
 
     private void SetConfiguration(IConfiguration config)
     {
-        _ensureDatabaseOnFirstUse = config.GetValue<bool>("Azure:Cosmos:EnsureDatabaseOnFirstUse");
         _databaseName = config.GetValue<string>("Azure:Cosmos:DatabaseName");
 
         if (_databaseName == null)
             throw new Exception("Azure:Cosmos:DatabaseName is required");
+
+        _ensureDatabaseOnFirstUse = config.GetValue<bool>("Azure:Cosmos:EnsureDatabaseOnFirstUse");
+        _endpoint = config.GetValue<string>("Azure:Cosmos:Endpoint");
     }
 
     public ValueTask<Microsoft.Azure.Cosmos.Database> GetDatabase()
