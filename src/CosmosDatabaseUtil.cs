@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Soenneker.Cosmos.Client.Abstract;
 using Soenneker.Cosmos.Database.Abstract;
 using Soenneker.Cosmos.Database.Setup.Abstract;
+using Soenneker.Extensions.Configuration;
 using Soenneker.Utils.SingletonDictionary;
 
 namespace Soenneker.Cosmos.Database;
@@ -58,13 +59,9 @@ public class CosmosDatabaseUtil : ICosmosDatabaseUtil
 
     private void SetConfiguration(IConfiguration config)
     {
-        _databaseName = config.GetValue<string>("Azure:Cosmos:DatabaseName");
-
-        if (_databaseName == null)
-            throw new Exception("Azure:Cosmos:DatabaseName is required");
-
-        _ensureDatabaseOnFirstUse = config.GetValue<bool>("Azure:Cosmos:EnsureDatabaseOnFirstUse");
-        _endpoint = config.GetValue<string>("Azure:Cosmos:Endpoint");
+        _databaseName = config.GetValueStrict<string>("Azure:Cosmos:DatabaseName");
+        _ensureDatabaseOnFirstUse = config.GetValueStrict<bool>("Azure:Cosmos:EnsureDatabaseOnFirstUse");
+        _endpoint = config.GetValueStrict<string>("Azure:Cosmos:Endpoint");
     }
 
     public ValueTask<Microsoft.Azure.Cosmos.Database> GetDatabase()
