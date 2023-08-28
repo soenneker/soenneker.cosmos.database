@@ -39,6 +39,6 @@
 
         <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
         <PackageReference Include="Soenneker.Cosmos.Database.Setup" Version="1.0.126" />
-        <PackageReference Include="Soenneker.Utils.SingletonDictionary" Version="1.0.60" />
+        <PackageReference Include="Soenneker.Utils.SingletonDictionary" Version="1.0.61" />
     </ItemGroup>
 </Project>
