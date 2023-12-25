@@ -8,5 +8,5 @@
 ## Installation
 
 ```
-Install-Package Soenneker.Cosmos.Database
+dotnet add package Soenneker.Cosmos.Database
 ```
