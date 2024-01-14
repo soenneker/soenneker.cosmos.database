@@ -39,6 +39,6 @@
 
         
         <PackageReference Include="Soenneker.Cosmos.Database.Setup" Version="2.1.181" />
-        <PackageReference Include="Soenneker.Utils.SingletonDictionary" Version="2.1.111" />
+        <PackageReference Include="Soenneker.Utils.SingletonDictionary" Version="2.1.112" />
     </ItemGroup>
 </Project>
