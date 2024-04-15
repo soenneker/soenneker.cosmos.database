@@ -7,6 +7,8 @@ using Soenneker.Cosmos.Client.Abstract;
 using Soenneker.Cosmos.Database.Abstract;
 using Soenneker.Cosmos.Database.Setup.Abstract;
 using Soenneker.Extensions.Configuration;
+using Soenneker.Extensions.Task;
+using Soenneker.Extensions.ValueTask;
 using Soenneker.Utils.SingletonDictionary;
 
 namespace Soenneker.Cosmos.Database;
@@ -22,7 +24,7 @@ public class CosmosDatabaseUtil : ICosmosDatabaseUtil
     private string? _databaseName;
     private string? _endpoint;
 
-    public CosmosDatabaseUtil(ICosmosClientUtil cosmosClientUtil, ICosmosDatabaseSetupUtil cosmosSetupUtil, IConfiguration config, ILogger<CosmosDatabaseUtil> logger)
+    public CosmosDatabaseUtil(ICosmosClientUtil cosmosClientUtil, ICosmosDatabaseSetupUtil cosmosDatabaseSetupUtil, IConfiguration config, ILogger<CosmosDatabaseUtil> logger)
     {
         _logger = logger;
 
@@ -30,7 +32,7 @@ public class CosmosDatabaseUtil : ICosmosDatabaseUtil
 
         _databases = new SingletonDictionary<Microsoft.Azure.Cosmos.Database>(async args =>
         {
-            CosmosClient client = await cosmosClientUtil.GetClient();
+            CosmosClient client = await cosmosClientUtil.Get().NoSync();
 
             var databaseName = (string) args![0];
 
@@ -39,7 +41,7 @@ public class CosmosDatabaseUtil : ICosmosDatabaseUtil
             try
             {
                 if (_ensureDatabaseOnFirstUse)
-                    _ = await cosmosSetupUtil.EnsureDatabase(databaseName);
+                    _ = await cosmosDatabaseSetupUtil.Ensure(databaseName).NoSync();
 
                 database = client.GetDatabase(databaseName);
             }
@@ -64,17 +66,17 @@ public class CosmosDatabaseUtil : ICosmosDatabaseUtil
         _endpoint = config.GetValueStrict<string>("Azure:Cosmos:Endpoint");
     }
 
-    public ValueTask<Microsoft.Azure.Cosmos.Database> GetDatabase()
+    public ValueTask<Microsoft.Azure.Cosmos.Database> Get()
     {
         return _databases.Get(_databaseName!, _databaseName!);
     }
 
-    public ValueTask<Microsoft.Azure.Cosmos.Database> GetDatabase(string databaseName)
+    public ValueTask<Microsoft.Azure.Cosmos.Database> Get(string databaseName)
     {
         return _databases.Get(databaseName, databaseName);
     }
 
-    public ValueTask<Microsoft.Azure.Cosmos.Database> GetDatabase(string databaseName, CosmosClient cosmosClient)
+    public ValueTask<Microsoft.Azure.Cosmos.Database> Get(string databaseName, CosmosClient cosmosClient)
     {
         int hashOfClient = cosmosClient.GetHashCode();
 
@@ -83,19 +85,19 @@ public class CosmosDatabaseUtil : ICosmosDatabaseUtil
         return _databases.Get(databaseKey, databaseName);
     }
 
-    public ValueTask DeleteDatabase()
+    public ValueTask Delete()
     {
-        return DeleteDatabase(_databaseName!);
+        return Delete(_databaseName!);
     }
 
-    public async ValueTask DeleteDatabase(string databaseName)
+    public async ValueTask Delete(string databaseName)
     {
         _logger.LogCritical("Deleting database {database}! ...", databaseName);
 
-        Microsoft.Azure.Cosmos.Database database = await GetDatabase(databaseName);
-        await database.DeleteAsync();
+        Microsoft.Azure.Cosmos.Database database = await Get(databaseName).NoSync();
+        await database.DeleteAsync().NoSync();
 
-        await _databases.Remove(databaseName);
+        await _databases.Remove(databaseName).NoSync();
 
         _logger.LogWarning("Finished deleting database {database}", databaseName);
     }
