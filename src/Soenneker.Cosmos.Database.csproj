@@ -37,7 +37,7 @@
         <None Include="..\LICENSE" Pack="true" PackagePath="\" />
         <None Include="..\icon.png" Pack="true" PackagePath="\" />
         <PackageReference Include="Soenneker.Cosmos.Database.Setup" Version="2.1.614" />
-        <PackageReference Include="Soenneker.Extensions.Task" Version="2.1.53" />
+        <PackageReference Include="Soenneker.Extensions.Task" Version="2.1.55" />
         <PackageReference Include="Soenneker.Utils.SingletonDictionary" Version="2.1.291" />
     </ItemGroup>
 </Project>
