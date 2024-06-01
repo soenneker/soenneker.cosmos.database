@@ -38,6 +38,6 @@
         <None Include="..\icon.png" Pack="true" PackagePath="\" />
         <PackageReference Include="Soenneker.Cosmos.Database.Setup" Version="2.1.654" />
         <PackageReference Include="Soenneker.Extensions.Task" Version="2.1.55" />
-        <PackageReference Include="Soenneker.Utils.SingletonDictionary" Version="2.1.301" />
+        <PackageReference Include="Soenneker.Utils.SingletonDictionary" Version="2.1.302" />
     </ItemGroup>
 </Project>
