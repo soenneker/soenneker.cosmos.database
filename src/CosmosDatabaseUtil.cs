@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Configuration;
@@ -30,11 +31,11 @@ public class CosmosDatabaseUtil : ICosmosDatabaseUtil
 
         SetConfiguration(config);
 
-        _databases = new SingletonDictionary<Microsoft.Azure.Cosmos.Database>(async args =>
+        _databases = new SingletonDictionary<Microsoft.Azure.Cosmos.Database>(async (key, token, objects) =>
         {
             CosmosClient client = await cosmosClientUtil.Get().NoSync();
 
-            var databaseName = (string) args![0];
+            var databaseName = (string)objects[0];
 
             Microsoft.Azure.Cosmos.Database database;
 
@@ -66,38 +67,38 @@ public class CosmosDatabaseUtil : ICosmosDatabaseUtil
         _endpoint = config.GetValueStrict<string>("Azure:Cosmos:Endpoint");
     }
 
-    public ValueTask<Microsoft.Azure.Cosmos.Database> Get()
+    public ValueTask<Microsoft.Azure.Cosmos.Database> Get(CancellationToken cancellationToken = default)
     {
-        return _databases.Get(_databaseName!, _databaseName!);
+        return _databases.Get(_databaseName!, cancellationToken, _databaseName!);
     }
 
-    public ValueTask<Microsoft.Azure.Cosmos.Database> Get(string databaseName)
+    public ValueTask<Microsoft.Azure.Cosmos.Database> Get(string databaseName, CancellationToken cancellationToken = default)
     {
-        return _databases.Get(databaseName, databaseName);
+        return _databases.Get(databaseName, cancellationToken, databaseName);
     }
 
-    public ValueTask<Microsoft.Azure.Cosmos.Database> Get(string databaseName, CosmosClient cosmosClient)
+    public ValueTask<Microsoft.Azure.Cosmos.Database> Get(string databaseName, CosmosClient cosmosClient, CancellationToken cancellationToken = default)
     {
         int hashOfClient = cosmosClient.GetHashCode();
 
         var databaseKey = $"{databaseName}-{hashOfClient}";
 
-        return _databases.Get(databaseKey, databaseName);
+        return _databases.Get(databaseKey, cancellationToken, databaseName);
     }
 
-    public ValueTask Delete()
+    public ValueTask Delete(CancellationToken cancellationToken = default)
     {
-        return Delete(_databaseName!);
+        return Delete(_databaseName!, cancellationToken);
     }
 
-    public async ValueTask Delete(string databaseName)
+    public async ValueTask Delete(string databaseName, CancellationToken cancellationToken = default)
     {
         _logger.LogCritical("Deleting database {database}! ...", databaseName);
 
-        Microsoft.Azure.Cosmos.Database database = await Get(databaseName).NoSync();
-        await database.DeleteAsync().NoSync();
+        Microsoft.Azure.Cosmos.Database database = await Get(databaseName, cancellationToken).NoSync();
+        await database.DeleteAsync(cancellationToken: cancellationToken).NoSync();
 
-        await _databases.Remove(databaseName).NoSync();
+        await _databases.Remove(databaseName, cancellationToken).NoSync();
 
         _logger.LogWarning("Finished deleting database {database}", databaseName);
     }
