@@ -33,7 +33,7 @@ public class CosmosDatabaseUtil : ICosmosDatabaseUtil
 
         _databases = new SingletonDictionary<Microsoft.Azure.Cosmos.Database>(async (key, token, objects) =>
         {
-            CosmosClient client = await cosmosClientUtil.Get().NoSync();
+            CosmosClient client = await cosmosClientUtil.Get(token).NoSync();
 
             var databaseName = (string)objects[0];
 
@@ -42,14 +42,14 @@ public class CosmosDatabaseUtil : ICosmosDatabaseUtil
             try
             {
                 if (_ensureDatabaseOnFirstUse)
-                    _ = await cosmosDatabaseSetupUtil.Ensure(databaseName).NoSync();
+                    _ = await cosmosDatabaseSetupUtil.Ensure(databaseName, token).NoSync();
 
                 database = client.GetDatabase(databaseName);
             }
             catch (Exception e)
             {
                 var message =
-                    $"*** CosmosClientUtil *** Failed to get database for endpoint {_endpoint}. This probably means we were unable to connect to Cosmos. We'll try to connect again next request.";
+                    $"*** CosmosDatabaseUtil *** Failed to get database for endpoint {_endpoint}. This probably means we were unable to connect to Cosmos. We'll try to connect again next request.";
 
                 _logger.LogCritical(e, "{message}", message);
 
