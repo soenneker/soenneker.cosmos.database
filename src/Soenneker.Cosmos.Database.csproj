@@ -36,7 +36,7 @@
         <None Include="..\README.md" Pack="true" PackagePath="\" />
         <None Include="..\LICENSE" Pack="true" PackagePath="\" />
         <None Include="..\icon.png" Pack="true" PackagePath="\" />
-        <PackageReference Include="Soenneker.Cosmos.Database.Setup" Version="2.1.914" />
+        <PackageReference Include="Soenneker.Cosmos.Database.Setup" Version="2.1.915" />
         <PackageReference Include="Soenneker.Utils.SingletonDictionary" Version="2.1.455" />
     </ItemGroup>
 </Project>
