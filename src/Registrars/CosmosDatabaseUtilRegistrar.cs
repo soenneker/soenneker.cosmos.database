@@ -12,8 +12,7 @@ public static class CosmosDatabaseUtilRegistrar
 {
     public static IServiceCollection AddCosmosDatabaseUtilAsSingleton(this IServiceCollection services)
     {
-        services.AddCosmosDatabaseSetupUtilAsSingleton();
-        services.TryAddSingleton<ICosmosDatabaseUtil, CosmosDatabaseUtil>();
+        services.AddCosmosDatabaseSetupUtilAsSingleton().TryAddSingleton<ICosmosDatabaseUtil, CosmosDatabaseUtil>();
 
         return services;
     }
