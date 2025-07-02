@@ -15,7 +15,7 @@ using Soenneker.Utils.SingletonDictionary;
 namespace Soenneker.Cosmos.Database;
 
 /// <inheritdoc cref="ICosmosDatabaseUtil"/>
-public class CosmosDatabaseUtil : ICosmosDatabaseUtil
+public sealed class CosmosDatabaseUtil : ICosmosDatabaseUtil
 {
     private readonly ILogger<CosmosDatabaseUtil> _logger;
 
