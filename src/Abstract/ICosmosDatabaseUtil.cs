@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics.Contracts;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,7 +10,7 @@ namespace Soenneker.Cosmos.Database.Abstract;
 /// A utility library for storing Azure Cosmos databases <para/>
 /// Singleton IoC
 /// </summary>
-public interface ICosmosDatabaseUtil
+public interface ICosmosDatabaseUtil : IAsyncDisposable, IDisposable
 {
     [Pure]
     ValueTask<Microsoft.Azure.Cosmos.Database> Get(CancellationToken cancellationToken = default);
@@ -18,12 +19,12 @@ public interface ICosmosDatabaseUtil
     /// Implements double check locking mechanism
     /// </summary>
     [Pure]
-    ValueTask<Microsoft.Azure.Cosmos.Database> Get(string databaseName, CancellationToken cancellationToken = default);
+    ValueTask<Microsoft.Azure.Cosmos.Database> Get(string endpoint, string accountKey, string databaseName, CancellationToken cancellationToken = default);
 
     [Pure]
     ValueTask<Microsoft.Azure.Cosmos.Database> Get(string databaseName, CosmosClient cosmosClient, CancellationToken cancellationToken = default);
 
     ValueTask Delete(CancellationToken cancellationToken = default);
 
-    ValueTask Delete(string databaseName, CancellationToken cancellationToken = default);
+    ValueTask Delete(string endpoint, string accountKey, string databaseName, CancellationToken cancellationToken = default);
 }

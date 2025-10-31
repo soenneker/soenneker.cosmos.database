@@ -18,38 +18,38 @@ namespace Soenneker.Cosmos.Database;
 public sealed class CosmosDatabaseUtil : ICosmosDatabaseUtil
 {
     private readonly ILogger<CosmosDatabaseUtil> _logger;
-
     private readonly SingletonDictionary<Microsoft.Azure.Cosmos.Database> _databases;
+    private readonly IConfiguration _config;
 
-    private bool _ensureDatabaseOnFirstUse;
-    private string? _databaseName;
-    private string? _endpoint;
-
-    public CosmosDatabaseUtil(ICosmosClientUtil cosmosClientUtil, ICosmosDatabaseSetupUtil cosmosDatabaseSetupUtil, IConfiguration config, ILogger<CosmosDatabaseUtil> logger)
+    public CosmosDatabaseUtil(ICosmosClientUtil cosmosClientUtil, ICosmosDatabaseSetupUtil cosmosDatabaseSetupUtil, IConfiguration config,
+        ILogger<CosmosDatabaseUtil> logger)
     {
         _logger = logger;
+        _config = config;
 
-        SetConfiguration(config);
+        bool ensureDatabaseOnFirstUse = config.GetValue("Azure:Cosmos:EnsureDatabaseOnFirstUse", true);
 
         _databases = new SingletonDictionary<Microsoft.Azure.Cosmos.Database>(async (key, token, objects) =>
         {
-            CosmosClient client = await cosmosClientUtil.Get(token).NoSync();
+            var endpoint = (string)objects[0];
+            var accountKey = (string)objects[1];
+            var databaseName = (string)objects[2];
 
-            var databaseName = (string)objects[0];
+            CosmosClient client = await cosmosClientUtil.Get(endpoint, accountKey, token).NoSync();
 
             Microsoft.Azure.Cosmos.Database database;
 
             try
             {
-                if (_ensureDatabaseOnFirstUse)
-                    _ = await cosmosDatabaseSetupUtil.Ensure(databaseName, token).NoSync();
+                if (ensureDatabaseOnFirstUse)
+                    _ = await cosmosDatabaseSetupUtil.Ensure(endpoint, accountKey, databaseName, token).NoSync();
 
                 database = client.GetDatabase(databaseName);
             }
             catch (Exception e)
             {
                 var message =
-                    $"*** CosmosDatabaseUtil *** Failed to get database for endpoint {_endpoint}. This probably means we were unable to connect to Cosmos. We'll try to connect again next request.";
+                    $"*** CosmosDatabaseUtil *** Failed to get database for endpoint {endpoint ?? "unknown"}. This probably means we were unable to connect to Cosmos. We'll try to connect again next request.";
 
                 _logger.LogCritical(e, "{message}", message);
 
@@ -60,46 +60,62 @@ public sealed class CosmosDatabaseUtil : ICosmosDatabaseUtil
         });
     }
 
-    private void SetConfiguration(IConfiguration config)
-    {
-        _databaseName = config.GetValueStrict<string>("Azure:Cosmos:DatabaseName");
-        _ensureDatabaseOnFirstUse = config.GetValueStrict<bool>("Azure:Cosmos:EnsureDatabaseOnFirstUse");
-        _endpoint = config.GetValueStrict<string>("Azure:Cosmos:Endpoint");
-    }
-
     public ValueTask<Microsoft.Azure.Cosmos.Database> Get(CancellationToken cancellationToken = default)
     {
-        return _databases.Get(_databaseName!, cancellationToken, _databaseName!);
+        var databaseName = _config.GetValueStrict<string>("Azure:Cosmos:DatabaseName");
+        var endpoint = _config.GetValueStrict<string>("Azure:Cosmos:Endpoint");
+        var accountKey = _config.GetValueStrict<string>("Azure:Cosmos:AccountKey");
+
+        return Get(endpoint, accountKey, databaseName, cancellationToken);
     }
 
-    public ValueTask<Microsoft.Azure.Cosmos.Database> Get(string databaseName, CancellationToken cancellationToken = default)
+    public ValueTask<Microsoft.Azure.Cosmos.Database> Get(string endpoint, string accountKey, string databaseName,
+        CancellationToken cancellationToken = default)
     {
-        return _databases.Get(databaseName, cancellationToken, databaseName);
+        var key = $"{endpoint}-{databaseName}";
+
+        return _databases.Get(key, cancellationToken, endpoint, accountKey, databaseName);
     }
 
     public ValueTask<Microsoft.Azure.Cosmos.Database> Get(string databaseName, CosmosClient cosmosClient, CancellationToken cancellationToken = default)
     {
         int hashOfClient = cosmosClient.GetHashCode();
+        var endpoint = cosmosClient.Endpoint.ToString();
 
-        var databaseKey = $"{databaseName}-{hashOfClient}";
+        var key = $"{endpoint}-{databaseName}-{hashOfClient}";
 
-        return _databases.Get(databaseKey, cancellationToken, databaseName);
+        return _databases.Get(key, cancellationToken, endpoint, databaseName);
     }
 
     public ValueTask Delete(CancellationToken cancellationToken = default)
     {
-        return Delete(_databaseName!, cancellationToken);
+        var databaseName = _config.GetValueStrict<string>("Azure:Cosmos:DatabaseName");
+        var endpoint = _config.GetValueStrict<string>("Azure:Cosmos:Endpoint");
+        var accountKey = _config.GetValueStrict<string>("Azure:Cosmos:AccountKey");
+
+        return Delete(endpoint, databaseName, accountKey, cancellationToken);
     }
 
-    public async ValueTask Delete(string databaseName, CancellationToken cancellationToken = default)
+    public async ValueTask Delete(string endpoint, string accountKey, string databaseName, CancellationToken cancellationToken = default)
     {
-        _logger.LogCritical("Deleting database {database}! ...", databaseName);
+        _logger.LogCritical("Deleting database {database} from endpoint {endpoint}! ...", databaseName, endpoint);
 
-        Microsoft.Azure.Cosmos.Database database = await Get(databaseName, cancellationToken).NoSync();
+        Microsoft.Azure.Cosmos.Database database = await Get(endpoint, accountKey, databaseName, cancellationToken).NoSync();
         await database.DeleteAsync(cancellationToken: cancellationToken).NoSync();
 
-        await _databases.Remove(databaseName, cancellationToken).NoSync();
+        var key = $"{endpoint}-{databaseName}";
+        await _databases.Remove(key, cancellationToken).NoSync();
 
-        _logger.LogWarning("Finished deleting database {database}", databaseName);
+        _logger.LogWarning("Finished deleting database {database} from endpoint {endpoint}", databaseName, endpoint);
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        return _databases.DisposeAsync();
+    }
+
+    public void Dispose()
+    {
+        _databases.Dispose();
     }
 }
