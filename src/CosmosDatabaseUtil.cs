@@ -35,14 +35,18 @@ public sealed class CosmosDatabaseUtil : ICosmosDatabaseUtil
             var accountKey = (string)objects[1];
             var databaseName = (string)objects[2];
 
-            CosmosClient client = await cosmosClientUtil.Get(endpoint, accountKey, token).NoSync();
+            CosmosClient client = await cosmosClientUtil.Get(endpoint, accountKey, token)
+                                                        .NoSync();
 
             Microsoft.Azure.Cosmos.Database database;
 
             try
             {
                 if (ensureDatabaseOnFirstUse)
-                    _ = await cosmosDatabaseSetupUtil.Ensure(endpoint, accountKey, databaseName, token).NoSync();
+                {
+                    _ = await cosmosDatabaseSetupUtil.Ensure(endpoint, accountKey, databaseName, token)
+                                                     .NoSync();
+                }
 
                 database = client.GetDatabase(databaseName);
             }
@@ -76,17 +80,7 @@ public sealed class CosmosDatabaseUtil : ICosmosDatabaseUtil
 
         return _databases.Get(key, cancellationToken, endpoint, accountKey, databaseName);
     }
-
-    public ValueTask<Microsoft.Azure.Cosmos.Database> Get(string databaseName, CosmosClient cosmosClient, CancellationToken cancellationToken = default)
-    {
-        int hashOfClient = cosmosClient.GetHashCode();
-        var endpoint = cosmosClient.Endpoint.ToString();
-
-        var key = $"{endpoint}-{databaseName}-{hashOfClient}";
-
-        return _databases.Get(key, cancellationToken, endpoint, databaseName);
-    }
-
+    
     public ValueTask Delete(CancellationToken cancellationToken = default)
     {
         var databaseName = _config.GetValueStrict<string>("Azure:Cosmos:DatabaseName");
@@ -100,11 +94,15 @@ public sealed class CosmosDatabaseUtil : ICosmosDatabaseUtil
     {
         _logger.LogCritical("Deleting database {database} from endpoint {endpoint}! ...", databaseName, endpoint);
 
-        Microsoft.Azure.Cosmos.Database database = await Get(endpoint, accountKey, databaseName, cancellationToken).NoSync();
-        await database.DeleteAsync(cancellationToken: cancellationToken).NoSync();
+        Microsoft.Azure.Cosmos.Database database = await Get(endpoint, accountKey, databaseName, cancellationToken)
+            .NoSync();
+
+        await database.DeleteAsync(cancellationToken: cancellationToken)
+                      .NoSync();
 
         var key = $"{endpoint}-{databaseName}";
-        await _databases.Remove(key, cancellationToken).NoSync();
+        await _databases.Remove(key, cancellationToken)
+                        .NoSync();
 
         _logger.LogWarning("Finished deleting database {database} from endpoint {endpoint}", databaseName, endpoint);
     }
