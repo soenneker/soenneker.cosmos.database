@@ -22,40 +22,46 @@ public sealed class CosmosDatabaseUtil : ICosmosDatabaseUtil
     private readonly ILogger<CosmosDatabaseUtil> _logger;
     private readonly SingletonDictionary<Microsoft.Azure.Cosmos.Database, CosmosDatabaseArgs> _databases;
     private readonly IConfiguration _config;
+    private readonly ICosmosClientUtil _cosmosClientUtil;
+    private readonly ICosmosDatabaseSetupUtil _cosmosDatabaseSetupUtil;
+    private readonly bool _ensureDatabaseOnFirstUse;
 
     public CosmosDatabaseUtil(ICosmosClientUtil cosmosClientUtil, ICosmosDatabaseSetupUtil cosmosDatabaseSetupUtil, IConfiguration config,
         ILogger<CosmosDatabaseUtil> logger)
     {
         _logger = logger;
         _config = config;
+        _cosmosClientUtil = cosmosClientUtil;
+        _cosmosDatabaseSetupUtil = cosmosDatabaseSetupUtil;
+        _ensureDatabaseOnFirstUse = config.GetValue("Azure:Cosmos:EnsureDatabaseOnFirstUse", true);
 
-        bool ensureDatabaseOnFirstUse = config.GetValue("Azure:Cosmos:EnsureDatabaseOnFirstUse", true);
+        _databases = new SingletonDictionary<Microsoft.Azure.Cosmos.Database, CosmosDatabaseArgs>(CreateDatabase);
+    }
 
-        _databases = new SingletonDictionary<Microsoft.Azure.Cosmos.Database, CosmosDatabaseArgs>(async (key, token, args) =>
-        {
-            CosmosClient client = await cosmosClientUtil.Get(args.Endpoint, args.AccountKey, token)
-                                                        .NoSync();
-
-            try
-            {
-                if (ensureDatabaseOnFirstUse)
-                {
-                    _ = await cosmosDatabaseSetupUtil.Ensure(args.Endpoint, args.AccountKey, args.DatabaseName, token)
+    private async ValueTask<Microsoft.Azure.Cosmos.Database> CreateDatabase(string key, CancellationToken token, CosmosDatabaseArgs args)
+    {
+        CosmosClient client = await _cosmosClientUtil.Get(args.Endpoint, args.AccountKey, token)
                                                      .NoSync();
-                }
 
-                return client.GetDatabase(args.DatabaseName);
-            }
-            catch (Exception e)
+        try
+        {
+            if (_ensureDatabaseOnFirstUse)
             {
-                var message =
-                    $"*** CosmosDatabaseUtil *** Failed to get database for endpoint {args.Endpoint ?? "unknown"}. This probably means we were unable to connect to Cosmos. We'll try to connect again next request.";
-
-                logger.LogCritical(e, "{message}", message);
-
-                throw new Exception(message);
+                _ = await _cosmosDatabaseSetupUtil.Ensure(args.Endpoint, args.AccountKey, args.DatabaseName, token)
+                                                  .NoSync();
             }
-        });
+
+            return client.GetDatabase(args.DatabaseName);
+        }
+        catch (Exception e)
+        {
+            var message =
+                $"*** CosmosDatabaseUtil *** Failed to get database for endpoint {args.Endpoint ?? "unknown"}. This probably means we were unable to connect to Cosmos. We'll try to connect again next request.";
+
+            _logger.LogCritical(e, "{message}", message);
+
+            throw new Exception(message);
+        }
     }
 
     public ValueTask<Microsoft.Azure.Cosmos.Database> Get(CancellationToken cancellationToken = default)
