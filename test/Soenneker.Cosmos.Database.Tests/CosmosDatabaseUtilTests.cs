@@ -1,21 +1,19 @@
 using Soenneker.Cosmos.Database.Abstract;
-using Soenneker.Tests.FixturedUnit;
-using Xunit;
-
+using Soenneker.Tests.HostedUnit;
 
 namespace Soenneker.Cosmos.Database.Tests;
 
-[Collection("Collection")]
-public class CosmosDatabaseUtilTests : FixturedUnitTest
+[ClassDataSource<Host>(Shared = SharedType.PerTestSession)]
+public class CosmosDatabaseUtilTests : HostedUnitTest
 {
     private readonly ICosmosDatabaseUtil _util;
 
-    public CosmosDatabaseUtilTests(Fixture fixture, ITestOutputHelper output) : base(fixture, output)
+    public CosmosDatabaseUtilTests(Host host) : base(host)
     {
         _util = Resolve<ICosmosDatabaseUtil>(true);
     }
 
-    [Fact]
+    [Test]
     public void Default()
     {
 
