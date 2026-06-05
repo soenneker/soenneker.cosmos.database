@@ -10,6 +10,11 @@ namespace Soenneker.Cosmos.Database.Registrars;
 /// </summary>
 public static class CosmosDatabaseUtilRegistrar
 {
+    /// <summary>
+    /// Adds cosmos database util as singleton.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The result of the operation.</returns>
     public static IServiceCollection AddCosmosDatabaseUtilAsSingleton(this IServiceCollection services)
     {
         services.AddCosmosDatabaseSetupUtilAsSingleton().TryAddSingleton<ICosmosDatabaseUtil, CosmosDatabaseUtil>();

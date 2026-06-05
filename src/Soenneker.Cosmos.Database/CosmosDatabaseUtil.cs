@@ -101,7 +101,14 @@ public sealed class CosmosDatabaseUtil : ICosmosDatabaseUtil
         _logger.LogWarning("Finished deleting database {database} from endpoint {endpoint}", databaseName, endpoint);
     }
 
+    /// <summary>
+    /// Asynchronously releases resources used by the current instance.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public ValueTask DisposeAsync() => _databases.DisposeAsync();
 
+    /// <summary>
+    /// Releases resources used by the current instance.
+    /// </summary>
     public void Dispose() => _databases.Dispose();
 }
