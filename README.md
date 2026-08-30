@@ -5,41 +5,63 @@
 
 # Soenneker.Cosmos.Database
 
-A utility library for storing Azure Cosmos databases Singleton IoC.
+Resolves and caches Azure Cosmos DB `Database` handles, with optional database creation on first use.
 
-## Install
+## Installation
 
 ```bash
 dotnet add package Soenneker.Cosmos.Database
 ```
 
-## Quick start
+## Configuration
 
-```csharp
-using Soenneker.Cosmos.Database.Registrars;
-using Microsoft.Extensions.DependencyInjection;
-
-var services = new ServiceCollection();
-var result = services.AddCosmosDatabaseUtilAsSingleton();
+```json
+{
+  "Azure": {
+    "Cosmos": {
+      "Endpoint": "https://your-account.documents.azure.com:443/",
+      "AccountKey": "your-account-key",
+      "DatabaseName": "app",
+      "EnsureDatabaseOnFirstUse": true
+    }
+  }
+}
 ```
 
-Registers Cosmos Database Util with a singleton lifetime.
+`Endpoint`, `AccountKey`, and `DatabaseName` are required when the service is constructed. `EnsureDatabaseOnFirstUse` defaults to `true`; set it to `false` when this process must not create databases.
 
-## What you get
+## Registration and use
 
-- `ICosmosDatabaseUtil` — A utility library for storing Azure Cosmos databases Singleton IoC.
-- `CosmosDatabaseUtilRegistrar` — A utility library for storing Azure Cosmos databases.
+```csharp
+using Soenneker.Cosmos.Database.Abstract;
+using Soenneker.Cosmos.Database.Registrars;
 
-## API at a glance
+services.AddCosmosDatabaseUtilAsSingleton();
 
-| API | What it does | Result / important behavior |
-| --- | --- | --- |
-| `ICosmosDatabaseUtil.Get(endpoint, accountKey, databaseName, cancellationToken)` | Implements double check locking mechanism. | A task whose result is the requested microsoft.Azure.Cosmos.Database. |
-| `ICosmosDatabaseUtil.Delete(endpoint, accountKey, databaseName, cancellationToken)` | Removes the entry associated with the specified key. | Completes when the requested deletion has finished. |
-| `CosmosDatabaseUtilRegistrar.AddCosmosDatabaseUtilAsSingleton(services)` | Registers Cosmos Database Util with a singleton lifetime. | The same service collection, so additional registrations can be chained. |
+ICosmosDatabaseUtil databases = serviceProvider.GetRequiredService<ICosmosDatabaseUtil>();
+Microsoft.Azure.Cosmos.Database database = await databases.Get(cancellationToken);
+```
 
-## Practical notes
+The registrar also adds the Cosmos database-setup and client dependencies. The utility is intentionally singleton-scoped so database handles can be reused.
 
-- Cancellation stops pending work; it does not undo work that has already completed.
-- Calls that return a cached or singleton value reuse the same instance until the owning service is disposed.
-- Dispose instances you own when their scope ends so held resources can be released.
+To resolve a database other than the configured default:
+
+```csharp
+Microsoft.Azure.Cosmos.Database archive = await databases.Get(
+    endpoint,
+    accountKey,
+    "archive",
+    cancellationToken);
+```
+
+Handles are cached by endpoint, account-key identity, and database name. Concurrent requests for the same key share one initialization.
+
+## Deleting a database
+
+```csharp
+await databases.Delete(endpoint, accountKey, "temporary", cancellationToken);
+```
+
+`Delete()` permanently deletes the database in Cosmos DB and removes its cached handle. With `EnsureDatabaseOnFirstUse` enabled, deleting a database that does not exist may create it immediately before deleting it because deletion first resolves the handle.
+
+Cosmos SDK and setup failures propagate to the caller. Cancellation is honored during initialization and deletion. Disposing the registered service releases its cache; the Cosmos client dependency owns the underlying clients.

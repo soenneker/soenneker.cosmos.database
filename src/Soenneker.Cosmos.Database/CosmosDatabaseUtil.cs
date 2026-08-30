@@ -10,12 +10,13 @@ using Soenneker.Extensions.Configuration;
 using Soenneker.Extensions.Task;
 using Soenneker.Extensions.ValueTask;
 using System;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Soenneker.Cosmos.Database;
 
-/// <inheritdoc cref="ICosmosDatabaseUtil"/>
 public sealed class CosmosDatabaseUtil : ICosmosDatabaseUtil
 {
     private readonly ILogger<CosmosDatabaseUtil> _logger;
@@ -63,8 +64,8 @@ public sealed class CosmosDatabaseUtil : ICosmosDatabaseUtil
             string message = $"*** CosmosDatabaseUtil *** Failed to get database for endpoint {args.Endpoint ?? "unknown"}. " +
                              "This probably means we were unable to connect to Cosmos. We'll try to connect again next request.";
 
-            _logger.LogCritical(e, "{message}", message);
-            throw new Exception(message);
+            _logger.LogError(e, "{message}", message);
+            throw new InvalidOperationException(message, e);
         }
     }
 
@@ -74,7 +75,7 @@ public sealed class CosmosDatabaseUtil : ICosmosDatabaseUtil
     public ValueTask<Microsoft.Azure.Cosmos.Database> Get(string endpoint, string accountKey, string databaseName,
         CancellationToken cancellationToken = default)
     {
-        var key = new CosmosDatabaseKey(endpoint, databaseName);
+        CosmosDatabaseKey key = GetKey(endpoint, accountKey, databaseName);
         var args = new CosmosDatabaseArgs(endpoint, accountKey, databaseName);
 
         return _databases.Get(key, args, cancellationToken);
@@ -93,12 +94,21 @@ public sealed class CosmosDatabaseUtil : ICosmosDatabaseUtil
         await database.DeleteAsync(cancellationToken: cancellationToken)
                       .NoSync();
 
-        var key = new CosmosDatabaseKey(endpoint, databaseName);
+        CosmosDatabaseKey key = GetKey(endpoint, accountKey, databaseName);
 
         await _databases.Remove(key, cancellationToken)
                         .NoSync();
 
         _logger.LogWarning("Finished deleting database {database} from endpoint {endpoint}", databaseName, endpoint);
+    }
+
+    private static CosmosDatabaseKey GetKey(string endpoint, string accountKey, string databaseName)
+    {
+        byte[] accountKeyHash = SHA256.HashData(Encoding.UTF8.GetBytes(accountKey));
+        return new CosmosDatabaseKey(endpoint, databaseName)
+        {
+            AccountKeyHash = Convert.ToHexString(accountKeyHash)
+        };
     }
 
     /// <summary>
