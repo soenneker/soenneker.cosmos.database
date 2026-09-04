@@ -17,6 +17,7 @@ using System.Threading.Tasks;
 
 namespace Soenneker.Cosmos.Database;
 
+/// <inheritdoc cref="ICosmosDatabaseUtil" />
 public sealed class CosmosDatabaseUtil : ICosmosDatabaseUtil
 {
     private readonly ILogger<CosmosDatabaseUtil> _logger;
