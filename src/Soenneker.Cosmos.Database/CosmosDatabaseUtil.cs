@@ -9,8 +9,8 @@ using Soenneker.Dictionaries.SingletonKeys;
 using Soenneker.Extensions.Configuration;
 using Soenneker.Extensions.Task;
 using Soenneker.Extensions.ValueTask;
+using Soenneker.Hashing.Sha256;
 using System;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,6 +20,8 @@ namespace Soenneker.Cosmos.Database;
 /// <inheritdoc cref="ICosmosDatabaseUtil" />
 public sealed class CosmosDatabaseUtil : ICosmosDatabaseUtil
 {
+    private static readonly Sha256HashingUtil _sha256 = new();
+
     private readonly ILogger<CosmosDatabaseUtil> _logger;
 
     private readonly SingletonKeyDictionary<CosmosDatabaseKey, Microsoft.Azure.Cosmos.Database, CosmosDatabaseArgs> _databases;
@@ -105,7 +107,7 @@ public sealed class CosmosDatabaseUtil : ICosmosDatabaseUtil
 
     private static CosmosDatabaseKey GetKey(string endpoint, string accountKey, string databaseName)
     {
-        byte[] accountKeyHash = SHA256.HashData(Encoding.UTF8.GetBytes(accountKey));
+        byte[] accountKeyHash = _sha256.Hash(Encoding.UTF8.GetBytes(accountKey));
         return new CosmosDatabaseKey(endpoint, databaseName)
         {
             AccountKeyHash = Convert.ToHexString(accountKeyHash)

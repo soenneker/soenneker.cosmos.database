@@ -43,5 +43,6 @@
 
     <ItemGroup>
         <PackageReference Include="Soenneker.Cosmos.Database.Setup" Version="4.0.2331" />
+        <PackageReference Include="Soenneker.Hashing.Sha256" Version="4.0.1" />
     </ItemGroup>
 </Project>
