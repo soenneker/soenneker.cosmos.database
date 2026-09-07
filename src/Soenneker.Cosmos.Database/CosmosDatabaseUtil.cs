@@ -31,6 +31,7 @@ public sealed class CosmosDatabaseUtil : ICosmosDatabaseUtil
     private readonly bool _ensureDatabaseOnFirstUse;
 
     private readonly DefaultCosmosConfig _default;
+    private readonly string _defaultAccountKeyHash;
 
     public CosmosDatabaseUtil(ICosmosClientUtil cosmosClientUtil, ICosmosDatabaseSetupUtil cosmosDatabaseSetupUtil, IConfiguration config,
         ILogger<CosmosDatabaseUtil> logger)
@@ -44,6 +45,7 @@ public sealed class CosmosDatabaseUtil : ICosmosDatabaseUtil
         _default = new DefaultCosmosConfig(Endpoint: config.GetValueStrict<string>("Azure:Cosmos:Endpoint"),
             AccountKey: config.GetValueStrict<string>("Azure:Cosmos:AccountKey"), DatabaseName: config.GetValueStrict<string>("Azure:Cosmos:DatabaseName"));
 
+        _defaultAccountKeyHash = GetAccountKeyHash(_default.AccountKey);
         _databases = new SingletonKeyDictionary<CosmosDatabaseKey, Microsoft.Azure.Cosmos.Database, CosmosDatabaseArgs>(CreateDatabase);
     }
 
@@ -105,12 +107,11 @@ public sealed class CosmosDatabaseUtil : ICosmosDatabaseUtil
         _logger.LogWarning("Finished deleting database {database} from endpoint {endpoint}", databaseName, endpoint);
     }
 
-    private static CosmosDatabaseKey GetKey(string endpoint, string accountKey, string databaseName)
+    private CosmosDatabaseKey GetKey(string endpoint, string accountKey, string databaseName)
     {
-        byte[] accountKeyHash = _sha256.Hash(Encoding.UTF8.GetBytes(accountKey));
         return new CosmosDatabaseKey(endpoint, databaseName)
         {
-            AccountKeyHash = Convert.ToHexString(accountKeyHash)
+            AccountKeyHash = accountKey == _default.AccountKey ? _defaultAccountKeyHash : GetAccountKeyHash(accountKey)
         };
     }
 
@@ -118,6 +119,9 @@ public sealed class CosmosDatabaseUtil : ICosmosDatabaseUtil
     /// Asynchronously releases resources used by the current instance.
     /// </summary>
     /// <returns>A task that represents the asynchronous operation.</returns>
+    private static string GetAccountKeyHash(string accountKey) =>
+        Convert.ToHexString(_sha256.Hash(Encoding.UTF8.GetBytes(accountKey)));
+
     public ValueTask DisposeAsync() => _databases.DisposeAsync();
 
     /// <summary>
