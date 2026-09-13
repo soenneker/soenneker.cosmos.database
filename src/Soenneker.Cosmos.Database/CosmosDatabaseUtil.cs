@@ -12,12 +12,12 @@ using Soenneker.Extensions.ValueTask;
 using Soenneker.Hashing.Sha256;
 using System;
 using System.Text;
+using System.Buffers;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Soenneker.Cosmos.Database;
 
-/// <inheritdoc cref="ICosmosDatabaseUtil" />
 public sealed class CosmosDatabaseUtil : ICosmosDatabaseUtil
 {
     private static readonly Sha256HashingUtil _sha256 = new();
@@ -115,17 +115,26 @@ public sealed class CosmosDatabaseUtil : ICosmosDatabaseUtil
         };
     }
 
-    /// <summary>
-    /// Asynchronously releases resources used by the current instance.
-    /// </summary>
-    /// <returns>A task that represents the asynchronous operation.</returns>
-    private static string GetAccountKeyHash(string accountKey) =>
-        Convert.ToHexString(_sha256.Hash(Encoding.UTF8.GetBytes(accountKey)));
+    private static string GetAccountKeyHash(string accountKey)
+    {
+        int byteCount = Encoding.UTF8.GetByteCount(accountKey);
+        byte[]? rented = null;
+        Span<byte> utf8 = byteCount <= 256 ? stackalloc byte[byteCount] : (rented = ArrayPool<byte>.Shared.Rent(byteCount)).AsSpan(0, byteCount);
+        try
+        {
+            Encoding.UTF8.GetBytes(accountKey, utf8);
+            Span<byte> hash = stackalloc byte[32];
+            _sha256.TryHash(utf8, hash, out _);
+            return Convert.ToHexString(hash);
+        }
+        finally
+        {
+            if (rented is not null)
+                ArrayPool<byte>.Shared.Return(rented, clearArray: true);
+        }
+    }
 
     public ValueTask DisposeAsync() => _databases.DisposeAsync();
 
-    /// <summary>
-    /// Releases resources used by the current instance.
-    /// </summary>
     public void Dispose() => _databases.Dispose();
 }
