@@ -3,13 +3,14 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace Soenneker.Cosmos.Database.Tests;
 
 public class CacheKeyRegressionTests
 {
     [Test]
-    public async ValueTask AccountKeyDigestPreservesUppercaseSha256ForStackAndPooledBuffers()
+    public async ValueTask AccountKeyDigestPreservesUppercaseSha256ForStackAndPooledBuffers(CancellationToken cancellationToken)
     {
         MethodInfo method = typeof(CosmosDatabaseUtil).GetMethod("GetAccountKeyHash", BindingFlags.NonPublic | BindingFlags.Static)!;
         foreach (string key in new[] { "", "test-account-key", new string('界', 500) })
