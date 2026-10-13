@@ -42,8 +42,8 @@ public sealed class CosmosDatabaseUtil : ICosmosDatabaseUtil
 
         _ensureDatabaseOnFirstUse = config.GetValue("Azure:Cosmos:EnsureDatabaseOnFirstUse", true);
 
-        _default = new DefaultCosmosConfig(Endpoint: config.GetValueStrict<string>("Azure:Cosmos:Endpoint"),
-            AccountKey: config.GetValueStrict<string>("Azure:Cosmos:AccountKey"), DatabaseName: config.GetValueStrict<string>("Azure:Cosmos:DatabaseName"));
+        _default = new DefaultCosmosConfig(Endpoint: config.GetStringStrict("Azure:Cosmos:Endpoint"),
+            AccountKey: config.GetStringStrict("Azure:Cosmos:AccountKey"), DatabaseName: config.GetStringStrict("Azure:Cosmos:DatabaseName"));
 
         _defaultAccountKeyHash = GetAccountKeyHash(_default.AccountKey);
         _databases = new SingletonKeyDictionary<CosmosDatabaseKey, Microsoft.Azure.Cosmos.Database, CosmosDatabaseArgs>(CreateDatabase);
